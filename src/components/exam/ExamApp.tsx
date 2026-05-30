@@ -8,6 +8,7 @@ import {
   Play,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   LayoutGrid,
   LogOut,
   Users,
@@ -16,6 +17,10 @@ import {
   RotateCcw,
   Unlock,
   Info,
+  ClipboardList,
+  Send,
+  CalendarClock,
+  Hourglass,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,6 +53,28 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 
 type Page = "login" | "dashboard" | "exam" | "lecturer";
@@ -65,7 +92,22 @@ const OPTIONS = [
   { key: "D", text: "Selection Sort" },
 ];
 
-type Student = { name: string; status: "Ongoing" | "Locked" | "Completed"; score: number | null };
+type LevelStat = { total: number; correct: number };
+type StudentDetail = {
+  startedAt: string;
+  finishedAt: string;
+  duration: string;
+  levels: { mudah: LevelStat; sedang: LevelStat; sulit: LevelStat };
+};
+
+type Student = {
+  npm: string;
+  name: string;
+  status: "Ongoing" | "Locked" | "Completed";
+  score: number | null;
+  detail?: StudentDetail;
+};
+
 type ClassGroup = { id: string; name: string; schedule: string; students: Student[] };
 
 const CLASSES: ClassGroup[] = [
@@ -74,10 +116,45 @@ const CLASSES: ClassGroup[] = [
     name: "TIF-3A · Algoritma & Struktur Data",
     schedule: "Senin, 08:00 – 09:40",
     students: [
-      { name: "Andi Pratama", status: "Ongoing", score: null },
-      { name: "Bella Sari", status: "Completed", score: 88 },
-      { name: "Citra Dewi", status: "Locked", score: null },
-      { name: "Dimas Putra", status: "Completed", score: 92 },
+      {
+        npm: "220110001",
+        name: "Andi Pratama",
+        status: "Ongoing",
+        score: null,
+      },
+      {
+        npm: "220110002",
+        name: "Bella Sari",
+        status: "Completed",
+        score: 88,
+        detail: {
+          startedAt: "08:00",
+          finishedAt: "09:28",
+          duration: "1j 28m",
+          levels: {
+            mudah: { total: 10, correct: 10 },
+            sedang: { total: 15, correct: 13 },
+            sulit: { total: 8, correct: 6 },
+          },
+        },
+      },
+      { npm: "220110003", name: "Citra Dewi", status: "Locked", score: null },
+      {
+        npm: "220110004",
+        name: "Dimas Putra",
+        status: "Completed",
+        score: 92,
+        detail: {
+          startedAt: "08:00",
+          finishedAt: "09:35",
+          duration: "1j 35m",
+          levels: {
+            mudah: { total: 10, correct: 10 },
+            sedang: { total: 15, correct: 14 },
+            sulit: { total: 8, correct: 7 },
+          },
+        },
+      },
     ],
   },
   {
@@ -85,11 +162,73 @@ const CLASSES: ClassGroup[] = [
     name: "TIF-3B · Algoritma & Struktur Data",
     schedule: "Selasa, 10:00 – 11:40",
     students: [
-      { name: "Eka Wijaya", status: "Ongoing", score: null },
-      { name: "Farah Nabila", status: "Completed", score: 76 },
-      { name: "Gilang Ramadhan", status: "Ongoing", score: null },
-      { name: "Hana Maulida", status: "Completed", score: 81 },
+      { npm: "220110021", name: "Eka Wijaya", status: "Ongoing", score: null },
+      {
+        npm: "220110022",
+        name: "Farah Nabila",
+        status: "Completed",
+        score: 76,
+        detail: {
+          startedAt: "10:00",
+          finishedAt: "11:32",
+          duration: "1j 32m",
+          levels: {
+            mudah: { total: 10, correct: 9 },
+            sedang: { total: 15, correct: 10 },
+            sulit: { total: 8, correct: 4 },
+          },
+        },
+      },
+      { npm: "220110023", name: "Gilang Ramadhan", status: "Ongoing", score: null },
+      {
+        npm: "220110024",
+        name: "Hana Maulida",
+        status: "Completed",
+        score: 81,
+        detail: {
+          startedAt: "10:00",
+          finishedAt: "11:30",
+          duration: "1j 30m",
+          levels: {
+            mudah: { total: 10, correct: 10 },
+            sedang: { total: 15, correct: 12 },
+            sulit: { total: 8, correct: 5 },
+          },
+        },
+      },
     ],
+  },
+];
+
+type HistoryItem = {
+  id: string;
+  title: string;
+  date: string;
+  released: boolean;
+  score: number | null;
+};
+
+const HISTORY: HistoryItem[] = [
+  {
+    id: "h1",
+    title: "UTS - Algoritma",
+    date: "12 Okt 2025",
+    released: true,
+    score: 84,
+  },
+  {
+    id: "h2",
+    title: "Kuis 3 - Struktur Data",
+    date: "5 Nov 2025",
+    released: true,
+    score: 90,
+  },
+  {
+    id: "h3",
+    title: "Kuis 4 - Greedy & DP",
+    date: "20 Nov 2025",
+    released: false,
+    score: null,
   },
 ];
 
@@ -192,7 +331,7 @@ function TopBar({ onLogout }: { onLogout: () => void }) {
           <div className="hidden items-center gap-2 sm:flex">
             <div className="text-right leading-tight">
               <div className="text-sm font-medium">Andi Pratama</div>
-              <div className="text-xs text-muted-foreground">NIM 220110xxx</div>
+              <div className="text-xs text-muted-foreground">NPM 220110001</div>
             </div>
           </div>
           <Avatar className="h-9 w-9">
@@ -219,6 +358,8 @@ function StudentDashboard({
   onStart: () => void;
   onLogout: () => void;
 }) {
+  const [resultOpen, setResultOpen] = useState<HistoryItem | null>(null);
+
   return (
     <>
       <TopBar onLogout={onLogout} />
@@ -272,7 +413,79 @@ function StudentDashboard({
             </Tooltip>
           </CardContent>
         </Card>
+
+        {/* HASIL UJIAN */}
+        <div className="mt-8 mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <ClipboardList className="h-3.5 w-3.5" />
+          Hasil Ujian
+        </div>
+
+        <Card>
+          <CardContent className="p-2 sm:p-3">
+            <ul className="divide-y">
+              {HISTORY.map((h) => (
+                <li
+                  key={h.id}
+                  className="flex items-center justify-between gap-3 p-3"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium">{h.title}</div>
+                    <div className="text-xs text-muted-foreground">{h.date}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {h.released ? (
+                      <Badge className="border-success/30 bg-success/10 text-success hover:bg-success/10">
+                        <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-success" />
+                        Nilai keluar
+                      </Badge>
+                    ) : (
+                      <Badge className="border-amber-500/30 bg-amber-500/10 text-amber-600 hover:bg-amber-500/10">
+                        <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
+                        Menunggu
+                      </Badge>
+                    )}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span>
+                          <Button
+                            size="sm"
+                            variant={h.released ? "default" : "outline"}
+                            disabled={!h.released}
+                            onClick={() => setResultOpen(h)}
+                            className="h-9"
+                          >
+                            Lihat
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {h.released
+                          ? "Lihat rincian nilai ujian ini"
+                          : "Nilai belum dirilis oleh dosen"}
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       </main>
+
+      <Dialog open={!!resultOpen} onOpenChange={(o) => !o && setResultOpen(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{resultOpen?.title}</DialogTitle>
+            <DialogDescription>{resultOpen?.date}</DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border bg-muted/30 p-4 text-center">
+            <div className="text-xs text-muted-foreground">Nilai Akhir</div>
+            <div className="mt-1 text-4xl font-bold text-brand">
+              {resultOpen?.score}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -305,6 +518,10 @@ function ExamView({ onFinish }: { onFinish: () => void }) {
     Array(TOTAL_QUESTIONS).fill(null),
   );
   const [mapOpen, setMapOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const answered = answers.filter(Boolean).length;
+  const unanswered = TOTAL_QUESTIONS - answered;
 
   const setAnswer = (val: string) => {
     setAnswers((prev) => {
@@ -352,7 +569,12 @@ function ExamView({ onFinish }: { onFinish: () => void }) {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button size="sm" variant="destructive" onClick={onFinish} className="h-9">
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setConfirmOpen(true)}
+                  className="h-9"
+                >
                   Selesai
                 </Button>
               </TooltipTrigger>
@@ -370,7 +592,7 @@ function ExamView({ onFinish }: { onFinish: () => void }) {
               Soal {current + 1} dari {TOTAL_QUESTIONS}
             </span>
             <span className="text-xs text-muted-foreground">
-              Terjawab: {answers.filter(Boolean).length}/{TOTAL_QUESTIONS}
+              Terjawab: {answered}/{TOTAL_QUESTIONS}
             </span>
           </div>
 
@@ -485,6 +707,52 @@ function ExamView({ onFinish }: { onFinish: () => void }) {
           <SheetClose className="sr-only">Tutup</SheetClose>
         </SheetContent>
       </Sheet>
+
+      {/* Submit confirmation */}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Send className="h-5 w-5 text-brand" />
+              Kirim jawaban sekarang?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Pastikan semua jawaban sudah benar. Setelah dikirim, Anda
+                  tidak dapat mengubahnya kembali.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-md border bg-success/10 p-3 text-center">
+                    <div className="text-xs text-success">Terjawab</div>
+                    <div className="text-lg font-bold text-success">
+                      {answered}
+                    </div>
+                  </div>
+                  <div
+                    className={cn(
+                      "rounded-md border p-3 text-center",
+                      unanswered > 0
+                        ? "border-amber-500/30 bg-amber-500/10 text-amber-600"
+                        : "bg-muted",
+                    )}
+                  >
+                    <div className="text-xs">Belum dijawab</div>
+                    <div className="text-lg font-bold">{unanswered}</div>
+                  </div>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Periksa lagi</AlertDialogCancel>
+            <AlertDialogAction onClick={onFinish}>
+              <Send className="!h-3.5 !w-3.5" />
+              Kirim & Selesai
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -548,6 +816,8 @@ function Legend() {
 /* --------------------------- LECTURER --------------------------- */
 
 function LecturerDashboard({ onLogout }: { onLogout: () => void }) {
+  const [selected, setSelected] = useState<Student | null>(null);
+
   const totalPeserta = CLASSES.reduce((n, c) => n + c.students.length, 0);
   const ongoing = CLASSES.reduce(
     (n, c) => n + c.students.filter((s) => s.status === "Ongoing").length,
@@ -610,9 +880,8 @@ function LecturerDashboard({ onLogout }: { onLogout: () => void }) {
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Memutus sesi peserta dari perangkat lama agar bisa login
-                    kembali di perangkat lain. Berguna saat HP/laptop peserta
-                    error atau tertinggal. Jawaban yang sudah tersimpan tidak
-                    hilang.
+                    kembali di perangkat lain. Jawaban yang sudah tersimpan
+                    tidak hilang.
                   </p>
                 </div>
                 <div>
@@ -622,8 +891,7 @@ function LecturerDashboard({ onLogout }: { onLogout: () => void }) {
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Memberi izin peserta yang sudah <b>Completed</b> untuk
-                    mengulang ujian. Nilai sebelumnya diarsipkan, peserta
-                    mendapat sesi baru dengan timer ulang.
+                    mengulang ujian. Nilai sebelumnya diarsipkan.
                   </p>
                 </div>
               </div>
@@ -652,98 +920,289 @@ function LecturerDashboard({ onLogout }: { onLogout: () => void }) {
           />
         </div>
 
-        <div className="space-y-6">
+        <div className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Daftar Kelas
+        </div>
+
+        <div className="space-y-3">
           {CLASSES.map((cls) => (
-            <ClassSection key={cls.id} cls={cls} />
+            <ClassSection
+              key={cls.id}
+              cls={cls}
+              onSelectStudent={(s) => setSelected(s)}
+            />
           ))}
         </div>
       </main>
+
+      <StudentDetailDialog
+        student={selected}
+        onClose={() => setSelected(null)}
+      />
     </>
   );
 }
 
-function ClassSection({ cls }: { cls: ClassGroup }) {
+function ClassSection({
+  cls,
+  onSelectStudent,
+}: {
+  cls: ClassGroup;
+  onSelectStudent: (s: Student) => void;
+}) {
+  const [open, setOpen] = useState(false);
   const ongoing = cls.students.filter((s) => s.status === "Ongoing").length;
   const completed = cls.students.filter((s) => s.status === "Completed").length;
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <CardTitle className="text-sm">{cls.name}</CardTitle>
-            <p className="mt-0.5 text-xs text-muted-foreground">{cls.schedule}</p>
+    <Card className="overflow-hidden">
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CollapsibleTrigger asChild>
+          <button
+            className={cn(
+              "flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-muted/40",
+              open && "bg-muted/30",
+            )}
+          >
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                open && "rotate-180",
+              )}
+            />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold">{cls.name}</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">
+                {cls.schedule} · {cls.students.length} peserta
+              </div>
+            </div>
+            <div className="hidden gap-2 text-xs sm:flex">
+              <Badge variant="outline" className="border-brand/30 bg-brand-soft text-brand">
+                {ongoing} mengerjakan
+              </Badge>
+              <Badge variant="outline" className="border-success/30 bg-success/10 text-success">
+                {completed} selesai
+              </Badge>
+            </div>
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="border-t">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>NPM</TableHead>
+                    <TableHead>Nama</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Nilai</TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {cls.students.map((s) => (
+                    <TableRow
+                      key={s.npm}
+                      className="cursor-pointer"
+                      onClick={() => onSelectStudent(s)}
+                    >
+                      <TableCell className="font-mono text-xs">{s.npm}</TableCell>
+                      <TableCell className="font-medium">{s.name}</TableCell>
+                      <TableCell>
+                        <StatusBadge status={s.status} />
+                      </TableCell>
+                      <TableCell>
+                        {s.score !== null ? (
+                          <span className="font-semibold">{s.score}</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell
+                        className="text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {s.status === "Completed" ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button size="sm" variant="outline">
+                                <Unlock className="!h-3.5 !w-3.5" />
+                                <span className="hidden sm:inline">Buka Retake</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Izinkan peserta mengulang ujian.
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button size="sm" variant="outline">
+                                <RotateCcw className="!h-3.5 !w-3.5" />
+                                <span className="hidden sm:inline">Reset Device</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Putuskan sesi perangkat lama.
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </div>
-          <div className="flex gap-2 text-xs">
-            <Badge variant="outline" className="border-brand/30 bg-brand-soft text-brand">
-              {ongoing} mengerjakan
-            </Badge>
-            <Badge variant="outline" className="border-success/30 bg-success/10 text-success">
-              {completed} selesai
-            </Badge>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nama</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Nilai</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {cls.students.map((s) => (
-                <TableRow key={s.name}>
-                  <TableCell className="font-medium">{s.name}</TableCell>
-                  <TableCell>
-                    <StatusBadge status={s.status} />
-                  </TableCell>
-                  <TableCell>
-                    {s.score !== null ? (
-                      <span className="font-semibold">{s.score}</span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {s.status === "Completed" ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button size="sm" variant="outline">
-                            <Unlock className="!h-3.5 !w-3.5" />
-                            Buka Retake
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          Izinkan peserta mengulang ujian. Nilai lama diarsipkan.
-                        </TooltipContent>
-                      </Tooltip>
-                    ) : (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button size="sm" variant="outline">
-                            <RotateCcw className="!h-3.5 !w-3.5" />
-                            Reset Device
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          Putuskan sesi dari perangkat lama agar peserta bisa
-                          login ulang. Jawaban tetap tersimpan.
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
+  );
+}
+
+function StudentDetailDialog({
+  student,
+  onClose,
+}: {
+  student: Student | null;
+  onClose: () => void;
+}) {
+  const open = !!student;
+  const detail = student?.detail;
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{student?.name ?? "—"}</DialogTitle>
+          <DialogDescription>
+            NPM <span className="font-mono">{student?.npm}</span> ·{" "}
+            {student?.status}
+          </DialogDescription>
+        </DialogHeader>
+
+        {!detail ? (
+          <div className="rounded-lg border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+            Rincian belum tersedia. Peserta belum menyelesaikan ujian.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Score summary */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-md border bg-muted/30 p-3 text-center">
+                <div className="text-[10px] uppercase text-muted-foreground">
+                  Nilai
+                </div>
+                <div className="text-2xl font-bold text-brand">
+                  {student?.score}
+                </div>
+              </div>
+              <div className="rounded-md border bg-success/10 p-3 text-center">
+                <div className="text-[10px] uppercase text-success">Benar</div>
+                <div className="text-2xl font-bold text-success">
+                  {detail.levels.mudah.correct +
+                    detail.levels.sedang.correct +
+                    detail.levels.sulit.correct}
+                </div>
+              </div>
+              <div className="rounded-md border bg-destructive/10 p-3 text-center">
+                <div className="text-[10px] uppercase text-destructive">Salah</div>
+                <div className="text-2xl font-bold text-destructive">
+                  {detail.levels.mudah.total -
+                    detail.levels.mudah.correct +
+                    (detail.levels.sedang.total - detail.levels.sedang.correct) +
+                    (detail.levels.sulit.total - detail.levels.sulit.correct)}
+                </div>
+              </div>
+            </div>
+
+            {/* Chart per level */}
+            <div className="rounded-lg border p-4">
+              <div className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Rincian per Level
+              </div>
+              <div className="space-y-3">
+                <LevelBar label="Mudah" stat={detail.levels.mudah} tone="success" />
+                <LevelBar label="Sedang" stat={detail.levels.sedang} tone="brand" />
+                <LevelBar label="Sulit" stat={detail.levels.sulit} tone="destructive" />
+              </div>
+            </div>
+
+            {/* Time info */}
+            <div className="grid grid-cols-3 gap-2 text-xs">
+              <TimeTile
+                icon={<CalendarClock className="h-3.5 w-3.5" />}
+                label="Mulai"
+                value={detail.startedAt}
+              />
+              <TimeTile
+                icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+                label="Selesai"
+                value={detail.finishedAt}
+              />
+              <TimeTile
+                icon={<Hourglass className="h-3.5 w-3.5" />}
+                label="Durasi"
+                value={detail.duration}
+              />
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function LevelBar({
+  label,
+  stat,
+  tone,
+}: {
+  label: string;
+  stat: LevelStat;
+  tone: "success" | "brand" | "destructive";
+}) {
+  const pct = stat.total === 0 ? 0 : Math.round((stat.correct / stat.total) * 100);
+  const wrong = stat.total - stat.correct;
+  const fillClass =
+    tone === "success" ? "bg-success" : tone === "brand" ? "bg-brand" : "bg-destructive";
+
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between text-xs">
+        <span className="font-medium">{label}</span>
+        <span className="text-muted-foreground">
+          <span className="font-semibold text-foreground">{stat.correct}</span> benar ·{" "}
+          {wrong} salah <span className="text-muted-foreground/70">({pct}%)</span>
+        </span>
+      </div>
+      <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+        <div
+          className={cn("h-full rounded-full transition-all", fillClass)}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function TimeTile({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-md border bg-muted/30 p-2 text-center">
+      <div className="flex items-center justify-center gap-1 text-[10px] uppercase text-muted-foreground">
+        {icon}
+        {label}
+      </div>
+      <div className="mt-0.5 text-sm font-semibold">{value}</div>
+    </div>
   );
 }
 

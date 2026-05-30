@@ -15,6 +15,7 @@ import {
   Loader2,
   RotateCcw,
   Unlock,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +24,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Sheet,
   SheetContent,
+  SheetClose,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -35,9 +37,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 type Page = "login" | "dashboard" | "exam" | "lecturer";
+type Role = "student" | "lecturer";
 
 const TOTAL_QUESTIONS = 33;
 
@@ -51,42 +65,63 @@ const OPTIONS = [
   { key: "D", text: "Selection Sort" },
 ];
 
-const STUDENTS = [
-  { name: "Andi Pratama", status: "Ongoing", score: null },
-  { name: "Bella Sari", status: "Completed", score: 88 },
-  { name: "Citra Dewi", status: "Locked", score: null },
-  { name: "Dimas Putra", status: "Completed", score: 92 },
-  { name: "Eka Wijaya", status: "Ongoing", score: null },
-  { name: "Farah Nabila", status: "Completed", score: 76 },
+type Student = { name: string; status: "Ongoing" | "Locked" | "Completed"; score: number | null };
+type ClassGroup = { id: string; name: string; schedule: string; students: Student[] };
+
+const CLASSES: ClassGroup[] = [
+  {
+    id: "tif-a",
+    name: "TIF-3A · Algoritma & Struktur Data",
+    schedule: "Senin, 08:00 – 09:40",
+    students: [
+      { name: "Andi Pratama", status: "Ongoing", score: null },
+      { name: "Bella Sari", status: "Completed", score: 88 },
+      { name: "Citra Dewi", status: "Locked", score: null },
+      { name: "Dimas Putra", status: "Completed", score: 92 },
+    ],
+  },
+  {
+    id: "tif-b",
+    name: "TIF-3B · Algoritma & Struktur Data",
+    schedule: "Selasa, 10:00 – 11:40",
+    students: [
+      { name: "Eka Wijaya", status: "Ongoing", score: null },
+      { name: "Farah Nabila", status: "Completed", score: 76 },
+      { name: "Gilang Ramadhan", status: "Ongoing", score: null },
+      { name: "Hana Maulida", status: "Completed", score: 81 },
+    ],
+  },
 ];
 
 export default function ExamApp() {
   const [page, setPage] = useState<Page>("login");
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {page === "login" && <LoginView onLogin={() => setPage("dashboard")} />}
-      {page === "dashboard" && (
-        <StudentDashboard
-          onStart={() => setPage("exam")}
-          onSwitchRole={() => setPage("lecturer")}
-          onLogout={() => setPage("login")}
-        />
-      )}
-      {page === "exam" && <ExamView onFinish={() => setPage("dashboard")} />}
-      {page === "lecturer" && (
-        <LecturerDashboard
-          onBack={() => setPage("dashboard")}
-          onLogout={() => setPage("login")}
-        />
-      )}
-    </div>
+    <TooltipProvider delayDuration={200}>
+      <div className="min-h-screen bg-background text-foreground">
+        {page === "login" && (
+          <LoginView
+            onLogin={(role) => setPage(role === "lecturer" ? "lecturer" : "dashboard")}
+          />
+        )}
+        {page === "dashboard" && (
+          <StudentDashboard
+            onStart={() => setPage("exam")}
+            onLogout={() => setPage("login")}
+          />
+        )}
+        {page === "exam" && <ExamView onFinish={() => setPage("dashboard")} />}
+        {page === "lecturer" && (
+          <LecturerDashboard onLogout={() => setPage("login")} />
+        )}
+      </div>
+    </TooltipProvider>
   );
 }
 
 /* ----------------------------- LOGIN ----------------------------- */
 
-function LoginView({ onLogin }: { onLogin: () => void }) {
+function LoginView({ onLogin }: { onLogin: (role: Role) => void }) {
   return (
     <main className="flex min-h-screen items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm text-center">
@@ -100,17 +135,35 @@ function LoginView({ onLogin }: { onLogin: () => void }) {
           Masuk untuk mengakses jadwal & sesi ujian Anda.
         </p>
 
-        <div className="mt-10">
+        <div className="mt-10 space-y-3">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="lg"
+                onClick={() => onLogin("student")}
+                className="h-14 w-full text-base font-medium"
+              >
+                <Mail className="!h-5 !w-5" />
+                Masuk dengan Google Classroom
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Sistem mendeteksi peran dari akun Google Anda secara otomatis.
+            </TooltipContent>
+          </Tooltip>
+
           <Button
             size="lg"
-            onClick={onLogin}
-            className="h-14 w-full text-base font-medium"
+            variant="outline"
+            onClick={() => onLogin("lecturer")}
+            className="h-12 w-full text-sm"
           >
-            <Mail className="!h-5 !w-5" />
-            Masuk dengan Google Classroom
+            Demo: Masuk sebagai Dosen
           </Button>
+
           <p className="mt-4 text-xs text-muted-foreground">
-            Dengan masuk Anda menyetujui kebijakan integritas akademik.
+            Akun mahasiswa otomatis masuk ke panel ujian; akun dosen langsung ke
+            panel pemantauan.
           </p>
         </div>
       </div>
@@ -120,13 +173,7 @@ function LoginView({ onLogin }: { onLogin: () => void }) {
 
 /* --------------------------- DASHBOARD --------------------------- */
 
-function TopBar({
-  onLogout,
-  onSwitchRole,
-}: {
-  onLogout: () => void;
-  onSwitchRole?: () => void;
-}) {
+function TopBar({ onLogout }: { onLogout: () => void }) {
   return (
     <header className="sticky top-0 z-30 border-b bg-card/80 backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
@@ -145,29 +192,20 @@ function TopBar({
           <div className="hidden items-center gap-2 sm:flex">
             <div className="text-right leading-tight">
               <div className="text-sm font-medium">Andi Pratama</div>
-              <div className="text-xs text-muted-foreground">
-                NIM 220110xxx
-              </div>
+              <div className="text-xs text-muted-foreground">NIM 220110xxx</div>
             </div>
           </div>
           <Avatar className="h-9 w-9">
-            <AvatarFallback className="bg-brand-soft text-brand">
-              AP
-            </AvatarFallback>
+            <AvatarFallback className="bg-brand-soft text-brand">AP</AvatarFallback>
           </Avatar>
-          {onSwitchRole && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={onSwitchRole}
-              className="hidden md:inline-flex"
-            >
-              Tampilan Dosen
-            </Button>
-          )}
-          <Button size="icon" variant="ghost" onClick={onLogout}>
-            <LogOut className="h-4 w-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button size="icon" variant="ghost" onClick={onLogout}>
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Keluar dari akun</TooltipContent>
+          </Tooltip>
         </div>
       </div>
     </header>
@@ -176,16 +214,14 @@ function TopBar({
 
 function StudentDashboard({
   onStart,
-  onSwitchRole,
   onLogout,
 }: {
   onStart: () => void;
-  onSwitchRole: () => void;
   onLogout: () => void;
 }) {
   return (
     <>
-      <TopBar onLogout={onLogout} onSwitchRole={onSwitchRole} />
+      <TopBar onLogout={onLogout} />
       <main className="mx-auto max-w-5xl px-4 py-6">
         <div className="mb-6">
           <h1 className="text-xl font-semibold">Halo, Andi 👋</h1>
@@ -223,20 +259,19 @@ function StudentDashboard({
                 value="33 Soal"
               />
             </div>
-            <Button size="lg" className="h-12 w-full text-base" onClick={onStart}>
-              <Play className="!h-4 !w-4" />
-              Mulai Ujian
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="lg" className="h-12 w-full text-base" onClick={onStart}>
+                  <Play className="!h-4 !w-4" />
+                  Mulai Ujian
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Memulai sesi ujian. Timer akan otomatis berjalan.
+              </TooltipContent>
+            </Tooltip>
           </CardContent>
         </Card>
-
-        <Button
-          variant="outline"
-          className="mt-6 w-full md:hidden"
-          onClick={onSwitchRole}
-        >
-          Lihat Tampilan Dosen
-        </Button>
       </main>
     </>
   );
@@ -269,6 +304,7 @@ function ExamView({ onFinish }: { onFinish: () => void }) {
   const [answers, setAnswers] = useState<(string | null)[]>(
     Array(TOTAL_QUESTIONS).fill(null),
   );
+  const [mapOpen, setMapOpen] = useState(false);
 
   const setAnswer = (val: string) => {
     setAnswers((prev) => {
@@ -278,7 +314,10 @@ function ExamView({ onFinish }: { onFinish: () => void }) {
     });
   };
 
-  const goto = (i: number) => setCurrent(Math.max(0, Math.min(TOTAL_QUESTIONS - 1, i)));
+  const goto = (i: number) => {
+    setCurrent(Math.max(0, Math.min(TOTAL_QUESTIONS - 1, i)));
+    setMapOpen(false);
+  };
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -286,9 +325,7 @@ function ExamView({ onFinish }: { onFinish: () => void }) {
       <header className="sticky top-0 z-30 border-b bg-card">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3">
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold">
-              UAS - Algoritma
-            </div>
+            <div className="truncate text-sm font-semibold">UAS - Algoritma</div>
             <div className="mt-0.5 flex items-center gap-2">
               <Badge
                 variant="outline"
@@ -304,25 +341,29 @@ function ExamView({ onFinish }: { onFinish: () => void }) {
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="rounded-md border bg-muted px-3 py-1.5 font-mono text-sm font-semibold tabular-nums">
-              <Clock className="mr-1 inline h-3.5 w-3.5 -translate-y-0.5" />
-              01:39:45
-            </div>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={onFinish}
-              className="h-9"
-            >
-              Selesai
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="rounded-md border bg-muted px-3 py-1.5 font-mono text-sm font-semibold tabular-nums">
+                  <Clock className="mr-1 inline h-3.5 w-3.5 -translate-y-0.5" />
+                  01:39:45
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>Sisa waktu ujian</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="sm" variant="destructive" onClick={onFinish} className="h-9">
+                  Selesai
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Mengirim jawaban & mengakhiri ujian.</TooltipContent>
+            </Tooltip>
           </div>
         </div>
       </header>
 
       {/* Body */}
       <div className="mx-auto grid w-full max-w-7xl flex-1 grid-cols-1 gap-6 px-4 py-6 lg:grid-cols-10">
-        {/* Question column */}
         <section className="lg:col-span-7">
           <div className="mb-4 flex items-center justify-between">
             <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -347,9 +388,7 @@ function ExamView({ onFinish }: { onFinish: () => void }) {
                       className={cn(
                         "flex w-full items-center gap-3 rounded-lg border-2 p-4 text-left text-sm transition-colors",
                         "hover:bg-muted/50",
-                        selected
-                          ? "border-brand bg-brand-soft"
-                          : "border-border bg-card",
+                        selected ? "border-brand bg-brand-soft" : "border-border bg-card",
                       )}
                     >
                       <span
@@ -370,27 +409,36 @@ function ExamView({ onFinish }: { onFinish: () => void }) {
             </CardContent>
           </Card>
 
-          {/* Nav buttons */}
           <div className="mt-5 grid grid-cols-2 gap-3">
-            <Button
-              size="lg"
-              variant="outline"
-              className="h-12"
-              disabled={current === 0}
-              onClick={() => goto(current - 1)}
-            >
-              <ChevronLeft className="!h-4 !w-4" />
-              Sebelumnya
-            </Button>
-            <Button
-              size="lg"
-              className="h-12"
-              disabled={current === TOTAL_QUESTIONS - 1}
-              onClick={() => goto(current + 1)}
-            >
-              Selanjutnya
-              <ChevronRight className="!h-4 !w-4" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="h-12"
+                  disabled={current === 0}
+                  onClick={() => goto(current - 1)}
+                >
+                  <ChevronLeft className="!h-4 !w-4" />
+                  Sebelumnya
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Kembali ke soal sebelumnya</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="lg"
+                  className="h-12"
+                  disabled={current === TOTAL_QUESTIONS - 1}
+                  onClick={() => goto(current + 1)}
+                >
+                  Selanjutnya
+                  <ChevronRight className="!h-4 !w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Lanjut ke soal berikutnya</TooltipContent>
+            </Tooltip>
           </div>
         </section>
 
@@ -402,11 +450,7 @@ function ExamView({ onFinish }: { onFinish: () => void }) {
                 <CardTitle className="text-sm">Peta Soal</CardTitle>
               </CardHeader>
               <CardContent>
-                <QuestionGrid
-                  answers={answers}
-                  current={current}
-                  onSelect={goto}
-                />
+                <QuestionGrid answers={answers} current={current} onSelect={goto} />
                 <Legend />
               </CardContent>
             </Card>
@@ -415,16 +459,21 @@ function ExamView({ onFinish }: { onFinish: () => void }) {
       </div>
 
       {/* Floating map button - mobile */}
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button
-            size="lg"
-            className="fixed bottom-5 right-5 z-40 h-14 rounded-full shadow-lg lg:hidden"
-          >
-            <LayoutGrid className="!h-5 !w-5" />
-            Peta Soal
-          </Button>
-        </SheetTrigger>
+      <Sheet open={mapOpen} onOpenChange={setMapOpen}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <SheetTrigger asChild>
+              <Button
+                size="lg"
+                className="fixed bottom-5 right-5 z-40 h-14 rounded-full shadow-lg lg:hidden"
+              >
+                <LayoutGrid className="!h-5 !w-5" />
+                Peta Soal
+              </Button>
+            </SheetTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="left">Lompat ke nomor soal tertentu</TooltipContent>
+        </Tooltip>
         <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto">
           <SheetHeader className="text-left">
             <SheetTitle>Peta Soal</SheetTitle>
@@ -433,6 +482,7 @@ function ExamView({ onFinish }: { onFinish: () => void }) {
             <QuestionGrid answers={answers} current={current} onSelect={goto} />
             <Legend />
           </div>
+          <SheetClose className="sr-only">Tutup</SheetClose>
         </SheetContent>
       </Sheet>
     </div>
@@ -454,19 +504,25 @@ function QuestionGrid({
         const answered = a !== null;
         const isCurrent = i === current;
         return (
-          <button
-            key={i}
-            onClick={() => onSelect(i)}
-            className={cn(
-              "flex aspect-square items-center justify-center rounded-md border text-sm font-semibold transition-colors",
-              answered
-                ? "border-success bg-success text-success-foreground"
-                : "border-border bg-card text-foreground hover:bg-muted",
-              isCurrent && "ring-2 ring-brand ring-offset-2 ring-offset-card",
-            )}
-          >
-            {i + 1}
-          </button>
+          <Tooltip key={i}>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => onSelect(i)}
+                className={cn(
+                  "flex aspect-square items-center justify-center rounded-md border text-sm font-semibold transition-colors",
+                  answered
+                    ? "border-success bg-success text-success-foreground"
+                    : "border-border bg-card text-foreground hover:bg-muted",
+                  isCurrent && "ring-2 ring-brand ring-offset-2 ring-offset-card",
+                )}
+              >
+                {i + 1}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Soal {i + 1} · {answered ? "Sudah dijawab" : "Belum dijawab"}
+            </TooltipContent>
+          </Tooltip>
         );
       })}
     </div>
@@ -491,13 +547,17 @@ function Legend() {
 
 /* --------------------------- LECTURER --------------------------- */
 
-function LecturerDashboard({
-  onBack,
-  onLogout,
-}: {
-  onBack: () => void;
-  onLogout: () => void;
-}) {
+function LecturerDashboard({ onLogout }: { onLogout: () => void }) {
+  const totalPeserta = CLASSES.reduce((n, c) => n + c.students.length, 0);
+  const ongoing = CLASSES.reduce(
+    (n, c) => n + c.students.filter((s) => s.status === "Ongoing").length,
+    0,
+  );
+  const completed = CLASSES.reduce(
+    (n, c) => n + c.students.filter((s) => s.status === "Completed").length,
+    0,
+  );
+
   return (
     <>
       <header className="sticky top-0 z-30 border-b bg-card">
@@ -506,97 +566,184 @@ function LecturerDashboard({
             <GraduationCap className="h-5 w-5 text-brand" />
             <span className="text-sm font-semibold">Panel Dosen</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="ghost" onClick={onBack}>
-              Mahasiswa
-            </Button>
-            <Button size="icon" variant="ghost" onClick={onLogout}>
-              <LogOut className="h-4 w-4" />
-            </Button>
+          <div className="flex items-center gap-3">
+            <div className="hidden text-right leading-tight sm:block">
+              <div className="text-sm font-medium">Dr. Rina Hartanti</div>
+              <div className="text-xs text-muted-foreground">Dosen Pengampu</div>
+            </div>
+            <Avatar className="h-9 w-9">
+              <AvatarFallback className="bg-brand-soft text-brand">RH</AvatarFallback>
+            </Avatar>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="icon" variant="ghost" onClick={onLogout}>
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Keluar dari akun</TooltipContent>
+            </Tooltip>
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-6">
-        <div className="mb-5">
-          <h1 className="text-xl font-semibold">UAS - Algoritma</h1>
-          <p className="text-sm text-muted-foreground">
-            Pantau aktivitas peserta secara real-time.
-          </p>
+        <div className="mb-5 flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold">UAS - Algoritma</h1>
+            <p className="text-sm text-muted-foreground">
+              Pantau aktivitas peserta secara real-time.
+            </p>
+          </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button size="sm" variant="outline" className="shrink-0">
+                <Info className="!h-3.5 !w-3.5" />
+                Bantuan Aksi
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 text-sm">
+              <div className="space-y-3">
+                <div>
+                  <div className="flex items-center gap-2 font-semibold">
+                    <RotateCcw className="h-4 w-4 text-brand" />
+                    Reset Device
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Memutus sesi peserta dari perangkat lama agar bisa login
+                    kembali di perangkat lain. Berguna saat HP/laptop peserta
+                    error atau tertinggal. Jawaban yang sudah tersimpan tidak
+                    hilang.
+                  </p>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 font-semibold">
+                    <Unlock className="h-4 w-4 text-success" />
+                    Buka Retake
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Memberi izin peserta yang sudah <b>Completed</b> untuk
+                    mengulang ujian. Nilai sebelumnya diarsipkan, peserta
+                    mendapat sesi baru dengan timer ulang.
+                  </p>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
 
         <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <MetricCard
             icon={<Users className="h-4 w-4" />}
             label="Total Peserta"
-            value="42"
+            value={String(totalPeserta)}
             tone="default"
           />
           <MetricCard
             icon={<Loader2 className="h-4 w-4" />}
             label="Sedang Mengerjakan"
-            value="18"
+            value={String(ongoing)}
             tone="brand"
           />
           <MetricCard
             icon={<CheckCircle2 className="h-4 w-4" />}
             label="Selesai"
-            value="21"
+            value={String(completed)}
             tone="success"
           />
         </div>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Daftar Peserta</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nama</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Nilai</TableHead>
-                    <TableHead className="text-right">Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {STUDENTS.map((s) => (
-                    <TableRow key={s.name}>
-                      <TableCell className="font-medium">{s.name}</TableCell>
-                      <TableCell>
-                        <StatusBadge status={s.status} />
-                      </TableCell>
-                      <TableCell>
-                        {s.score !== null ? (
-                          <span className="font-semibold">{s.score}</span>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {s.status === "Completed" ? (
+        <div className="space-y-6">
+          {CLASSES.map((cls) => (
+            <ClassSection key={cls.id} cls={cls} />
+          ))}
+        </div>
+      </main>
+    </>
+  );
+}
+
+function ClassSection({ cls }: { cls: ClassGroup }) {
+  const ongoing = cls.students.filter((s) => s.status === "Ongoing").length;
+  const completed = cls.students.filter((s) => s.status === "Completed").length;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <CardTitle className="text-sm">{cls.name}</CardTitle>
+            <p className="mt-0.5 text-xs text-muted-foreground">{cls.schedule}</p>
+          </div>
+          <div className="flex gap-2 text-xs">
+            <Badge variant="outline" className="border-brand/30 bg-brand-soft text-brand">
+              {ongoing} mengerjakan
+            </Badge>
+            <Badge variant="outline" className="border-success/30 bg-success/10 text-success">
+              {completed} selesai
+            </Badge>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nama</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Nilai</TableHead>
+                <TableHead className="text-right">Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {cls.students.map((s) => (
+                <TableRow key={s.name}>
+                  <TableCell className="font-medium">{s.name}</TableCell>
+                  <TableCell>
+                    <StatusBadge status={s.status} />
+                  </TableCell>
+                  <TableCell>
+                    {s.score !== null ? (
+                      <span className="font-semibold">{s.score}</span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {s.status === "Completed" ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
                           <Button size="sm" variant="outline">
                             <Unlock className="!h-3.5 !w-3.5" />
                             Buka Retake
                           </Button>
-                        ) : (
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Izinkan peserta mengulang ujian. Nilai lama diarsipkan.
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
                           <Button size="sm" variant="outline">
                             <RotateCcw className="!h-3.5 !w-3.5" />
                             Reset Device
                           </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      </main>
-    </>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Putuskan sesi dari perangkat lama agar peserta bisa
+                          login ulang. Jawaban tetap tersimpan.
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -641,9 +788,7 @@ function StatusBadge({ status }: { status: string }) {
     );
   if (status === "Ongoing")
     return (
-      <Badge className="bg-brand-soft text-brand hover:bg-brand-soft">
-        Ongoing
-      </Badge>
+      <Badge className="bg-brand-soft text-brand hover:bg-brand-soft">Ongoing</Badge>
     );
   return (
     <Badge variant="outline" className="text-muted-foreground">

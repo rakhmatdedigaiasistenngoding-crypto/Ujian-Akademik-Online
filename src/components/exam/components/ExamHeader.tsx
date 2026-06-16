@@ -8,12 +8,14 @@ import {
 } from "@/components/ui/tooltip";
 
 interface ExamHeaderProps {
+  examTitle?: string;
   userName?: string;
   timeDisplay?: string;
   onSubmit?: () => void;
 }
 
 export function ExamHeader({
+  examTitle = "Ujian Akademik",
   userName = "Andi Pratama",
   timeDisplay = "01:39:45",
   onSubmit,
@@ -22,7 +24,7 @@ export function ExamHeader({
     <header className="sticky top-0 z-30 border-b bg-card">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3">
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold">UAS - Algoritma</div>
+          <div className="truncate text-sm font-semibold">{examTitle}</div>
           <div className="mt-0.5 flex items-center gap-2">
             <Badge
               variant="outline"

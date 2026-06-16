@@ -1,87 +1,115 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ExamHeader } from "./components/ExamHeader";
 import { QuestionArea } from "./components/QuestionArea";
 import { QuestionMapSidebar } from "./components/QuestionMapSidebar";
 import { QuestionMapMobile } from "./components/QuestionMapMobile";
 import { BottomNavigation } from "./components/BottomNavigation";
 import { SubmitDialog } from "./components/SubmitDialog";
+import { useExamStore } from "@/stores/examStore";
+import { useAuthStore } from "@/stores/authStore";
 
-const TOTAL_QUESTIONS = 33;
+export function ExamView() {
+  const user = useAuthStore((state) => state.user);
+  const {
+    session,
+    currentQuestionIndex,
+    timeRemaining,
+    setAnswer,
+    setCurrentQuestion,
+    tickTime,
+    submitExam,
+    config,
+  } = useExamStore();
 
-const QUESTION_TEXT =
-  "Diberikan sebuah array berisi N angka acak. Algoritma pengurutan manakah yang memiliki kompleksitas waktu kasus terburuk O(n log n) dan bersifat stabil?";
-
-const OPTIONS = [
-  { key: "A", text: "Quick Sort" },
-  { key: "B", text: "Merge Sort" },
-  { key: "C", text: "Bubble Sort" },
-  { key: "D", text: "Selection Sort" },
-];
-
-interface ExamViewProps {
-  onFinish: () => void;
-}
-
-export function ExamView({ onFinish }: ExamViewProps) {
-  const [current, setCurrent] = useState(0);
-  const [answers, setAnswers] = useState<(string | null)[]>(
-    Array(TOTAL_QUESTIONS).fill(null),
-  );
   const [mapOpen, setMapOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const answered = answers.filter(Boolean).length;
-  const unanswered = TOTAL_QUESTIONS - answered;
+  // Store the session status separately to avoid re-creating the timer on every state change
+  const sessionStatus = session?.status;
 
-  const setAnswer = (val: string) => {
-    setAnswers((prev) => {
-      const next = [...prev];
-      next[current] = val;
-      return next;
-    });
+  // Timer effect - ticks every second, only restarts if session status changes
+  useEffect(() => {
+    if (sessionStatus !== 'active') return;
+
+    const interval = setInterval(() => {
+      tickTime();
+    }, 1000);
+
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionStatus]);
+
+  // If no session, don't render (should not happen with proper routing)
+  if (!session) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">Tidak ada sesi ujian aktif.</p>
+      </div>
+    );
+  }
+
+  const currentQuestion = session.questions[currentQuestionIndex];
+  const answered = session.answers.filter(Boolean).length;
+  const unanswered = session.questions.length - answered;
+
+  const handleAnswerSelect = (val: string) => {
+    setAnswer(currentQuestionIndex, val);
   };
 
   const goto = (i: number) => {
-    setCurrent(Math.max(0, Math.min(TOTAL_QUESTIONS - 1, i)));
+    setCurrentQuestion(i);
     setMapOpen(false);
+  };
+
+  const handleSubmit = () => {
+    submitExam();
+    setConfirmOpen(false);
   };
 
   return (
     <div className="flex min-h-screen flex-col">
       <ExamHeader
-        userName="Andi Pratama"
-        timeDisplay="01:39:45"
+        examTitle={config?.title || "Ujian Akademik"}
+        userName={user?.name || "Peserta"}
+        timeDisplay={`${Math.floor(timeRemaining / 3600)}:${String(Math.floor((timeRemaining % 3600) / 60)).padStart(2, '0')}:${String(timeRemaining % 60).padStart(2, '0')}`}
         onSubmit={() => setConfirmOpen(true)}
       />
 
       <div className="mx-auto grid w-full max-w-7xl flex-1 grid-cols-1 gap-6 px-4 py-6 lg:grid-cols-10">
-        <QuestionArea
-          questionNumber={current + 1}
-          totalQuestions={TOTAL_QUESTIONS}
-          answeredCount={answered}
-          questionText={QUESTION_TEXT}
-          options={OPTIONS}
-          selectedAnswer={answers[current]}
-          onAnswerSelect={setAnswer}
-        />
+        <div className="flex flex-col gap-6 lg:col-span-7">
+          <QuestionArea
+            questionNumber={currentQuestionIndex + 1}
+            totalQuestions={session.questions.length}
+            answeredCount={answered}
+            questionText={currentQuestion?.text || ""}
+            options={currentQuestion?.options || []}
+            selectedAnswer={session.answers[currentQuestionIndex]}
+            onAnswerSelect={handleAnswerSelect}
+            image_url={currentQuestion?.image_url}
+            video_url={currentQuestion?.video_url}
+            link_url={currentQuestion?.link_url}
+          />
 
-        <BottomNavigation
-          currentQuestion={current}
-          totalQuestions={TOTAL_QUESTIONS}
-          onPrevious={() => goto(current - 1)}
-          onNext={() => goto(current + 1)}
-        />
+          <BottomNavigation
+            currentQuestion={currentQuestionIndex}
+            totalQuestions={session.questions.length}
+            onPrevious={() => goto(currentQuestionIndex - 1)}
+            onNext={() => goto(currentQuestionIndex + 1)}
+          />
+        </div>
 
-        <QuestionMapSidebar
-          answers={answers}
-          currentQuestion={current}
-          onQuestionSelect={goto}
-        />
+        <div className="lg:col-span-3">
+          <QuestionMapSidebar
+            answers={session.answers}
+            currentQuestion={currentQuestionIndex}
+            onQuestionSelect={goto}
+          />
+        </div>
       </div>
 
       <QuestionMapMobile
-        answers={answers}
-        currentQuestion={current}
+        answers={session.answers}
+        currentQuestion={currentQuestionIndex}
         onQuestionSelect={goto}
         open={mapOpen}
         onOpenChange={setMapOpen}
@@ -92,7 +120,7 @@ export function ExamView({ onFinish }: ExamViewProps) {
         onOpenChange={setConfirmOpen}
         answeredCount={answered}
         unansweredCount={unanswered}
-        onSubmit={onFinish}
+        onSubmit={handleSubmit}
       />
     </div>
   );
